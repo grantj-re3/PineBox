@@ -2,7 +2,8 @@
 // © 2024 grantj-re3
 
 //@version=5
-indicator("MimicOOP_Polym1")
+IND_TITLE = "MimicOOP_Polym1"
+indicator(IND_TITLE)
 
 // PURPOSE
 // Attempt to make Pine Script mimic OOP [runtime/dynamic] polymorphism.
@@ -88,7 +89,7 @@ method modify(VehicleModifier self, v) =>
 // Main
 //////////////////////////////////////////////////////////////////////////////
 if barstate.islast
-    log.info("Attempt to make Pine Script mimic OOP polymorphism")
+    log.info("{0}\nAttempt to make Pine Script mimic OOP polymorphism", IND_TITLE)
     myCar = Vehicle.new('Tesla', 'Model 3')
     cessna = Airplane.new('Cessna', 'Skyhawk', 'N-12345')
 
