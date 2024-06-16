@@ -1,0 +1,109 @@
+// License: https://opensource.org/license/bsd-3-clause
+// © 2024 grantj-re3
+
+//@version=5
+indicator("MimicOOP_Polym1")
+
+// PURPOSE
+// Attempt to make Pine Script mimic OOP [runtime/dynamic] polymorphism.
+//
+// I am not aware of a way to store polymorphic objects in variables,
+// arrays, matrices, maps, user defined types (UDTs), etc.
+//
+// Since Pine Script is strongly typed, is not an OOP language and does
+// not claim to support either inheritance or polymorphism, there is little
+// scope for implementing polymorphism. The only area I am aware of where
+// variables are not strongly typed are function/method arguments when:
+// - the argument is not the first argument of a method, and
+// - the function/method is not overloaded
+//
+// The function showMakeModel() below implements polymorphism by receiving
+// an object (v) of any type and invoking its getMakeModel() method.
+// showMoves() behaves similarly. Such functions should work provided the
+// return object is of a known type e.g. int, float, string, UDT,
+// array, matrix, map, etc.
+//
+// Can a function/method return a polymorphic type (i.e. one of several
+// object types) and be used by the caller? Initially we might expect the
+// answer to be "no" because Pine Script variables are strongly typed.
+// However again, if such a function/method is invoked as an argument in a
+// function/method call, then Pine Script will permit it provided the argument
+// type is not specified in the function/method definition. The call to the
+// modify() method below implements this.
+//
+// Try to implement the following Python tutorial [but we mostly fail]:
+//   Video 18: Python Classes, Objects, Inheritance & Polymorphism for Beginners
+//   Polymorphism section
+//   https://www.youtube.com/playlist?list=PL0Zuz27SZ-6MQri81d012LwP5jvFZ_scc
+//////////////////////////////////////////////////////////////////////////////
+type Vehicle
+    string make
+    string model
+
+method moves(Vehicle self) =>
+    self.make += ""     // No-op, because we must use this method arg
+    log.info("Moves along..")
+
+method getMakeModel(Vehicle self) =>
+    log.info("I''m a vehicle: {0} {1}", self.make, self.model)   // Remember to escape single quotes
+
+method appendToModel(Vehicle self, string code) =>
+    self.model += str.format("/{0}", code)
+
+//////////////////////////////////////////////////////////////////////////////
+type Airplane
+    string make
+    string model
+    string faaId
+
+method moves(Airplane self) =>
+    self.make += ""     // No-op, because we must use this method arg
+    log.info("Flies along..")
+
+method getMakeModel(Airplane self) =>
+    log.info("I''m an airplane: {0} {1}", self.make, self.model)   // Remember to escape single quotes
+
+method appendToModel(Airplane self, string code) =>
+    self.model += str.format("/{0}", code)
+
+//////////////////////////////////////////////////////////////////////////////
+showMakeModel(v) =>
+    v.getMakeModel()    // Uses polymorphism to invoke getMakeModel() of any UDT
+
+showMoves(v) =>
+    v.moves()           // Uses polymorphism to invoke moves() of any UDT
+
+//////////////////////////////////////////////////////////////////////////////
+type VehicleModifier
+    string name
+    string code
+
+method modify(VehicleModifier self, v) =>
+    log.info("Apply modification: {0} (code: {1})", self.name, self.code)
+    // Uses polymorphism to invoke appendToModel() of any UDT
+    v.appendToModel(self.code)  // Update the object v with the code
+    v                           // Return the updated vehicle v
+
+//////////////////////////////////////////////////////////////////////////////
+// Main
+//////////////////////////////////////////////////////////////////////////////
+if barstate.islast
+    log.info("Attempt to make Pine Script mimic OOP polymorphism")
+    myCar = Vehicle.new('Tesla', 'Model 3')
+    cessna = Airplane.new('Cessna', 'Skyhawk', 'N-12345')
+
+    showMakeModel(myCar)
+    showMoves(myCar)
+
+    showMakeModel(cessna)
+    showMoves(cessna)
+
+    log.info("==========")
+    vmSF2c = VehicleModifier.new("Safety feature 2c", "SF2c")
+    showMoves(myCar)
+    showMakeModel(vmSF2c.modify(myCar))
+
+    vmARC4b = VehicleModifier.new("Aviation regulatory change 4b", "ARC4b")
+    showMoves(vmARC4b.modify(cessna))
+    showMakeModel(cessna)
+

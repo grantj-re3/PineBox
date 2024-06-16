@@ -1,0 +1,123 @@
+// License: https://opensource.org/license/bsd-3-clause
+// © 2024 grantj-re3
+
+//@version=5
+IND_TITLE = "MimicOOP_Encap1"
+indicator(IND_TITLE)
+
+// PURPOSE
+// Attempt to make Pine Script mimic OOP for encapsulation.
+//
+// Differences compared to Corey Schafer's python tutorial (given below) are:
+// - To mimic class level attributes and methods, define a class level UDT
+//   (EmployeeCls) and make a single object (employeeCls) of this type.
+// - In the constructor init(), pass in the first argument which references
+//   the class level var employeeCls. This allows every object created to reference
+//   the class level attributes and methods via the instance level field, _cls.
+// - We have replaced the from_string() "constructor" with the new overloaded
+//   constructor init().
+// - The constructors look like class level methods because a class level var is
+//   the first arg (just like class level methods in python). We invoke the
+//   constructors with classvar.init().
+// - GOTCHA: Like class methods in python, the first arg is cls. However,
+//   unlike constructors in python, the first arg below is also cls (not self).
+//
+// Try to implement the following Python tutorial:
+//   Corey Schafer: Python OOP Tutorials - Working with Classes
+//   Tutorials 1, 2 and 3
+//   https://www.youtube.com/playlist?list=PL-osiE80TeTsqhIuOqKhwlXsIBIdSeYtc
+
+//////////////////////////////////////////////////////////////////////////////
+// Employee class vars. (Make a single object of this UDT.)
+//////////////////////////////////////////////////////////////////////////////
+type EmployeeCls
+    int numOfEmps = 0
+    float raiseAmt = 1.04
+
+//////////////////////////////////////////////////////////////////////////////
+// Employee instance vars & methods
+//////////////////////////////////////////////////////////////////////////////
+type EmployeeInst
+    EmployeeCls _cls        // A workaround to get access to class vars/methods from each instance/object
+    string first
+    string last
+    string email
+    float  pay
+
+method fullname(EmployeeInst self) =>
+    str.format("{0} {1}", self.first, self.last)    // Return the string
+
+method apply_raise(EmployeeInst self) =>
+    self.pay := self.pay * self._cls.raiseAmt
+
+method set_email(EmployeeInst self) =>
+    self.email := str.format("{0}.{1}@email.com", self.first, self.last)
+
+//////////////////////////////////////////////////////////////////////////////
+// Employee instance constructor(s)
+//////////////////////////////////////////////////////////////////////////////
+// Constructor
+// - We will use init() (since new() is already used in pine script)
+// - We invoke these constructors just like a class method
+method init(EmployeeCls cls, string first, string last, float pay) =>
+    self = EmployeeInst.new()
+    self._cls  := cls       // All EmployeeInst objects will point to the *one* instance of the class object.
+    self.first := first
+    self.last  := last
+    self.pay   := pay
+    self.set_email()
+    self._cls.numOfEmps += 1
+    self                    // Return the new object
+
+// Overloaded constructor. Called from_string() in Corey's tutorial.
+method init(EmployeeCls cls, string empStr) =>
+    parts = str.split(empStr, '-')
+    cls.init(parts.get(0), parts.get(1), str.tonumber(parts.get(2)))    // Return the new object
+
+//////////////////////////////////////////////////////////////////////////////
+// Employee class methods
+//////////////////////////////////////////////////////////////////////////////
+// Similar to a Python @classmethod (because we use cls.something)
+method setRaiseAmt(EmployeeCls cls, float amount) =>
+    cls.raiseAmt := amount
+
+// The from_string() class method is now the second init() constructor above.
+
+//////////////////////////////////////////////////////////////////////////////
+// Main
+//////////////////////////////////////////////////////////////////////////////
+if barstate.islast
+    log.info("{0}\nAttempt to make Pine Script mimic OOP for encapsulation", IND_TITLE)
+    employeeCls = EmployeeCls.new()  // Workaround: Make a *single* copy of class vars
+
+    emp1 = employeeCls.init('Corey', 'Schafer', 50000)
+    emp2 = employeeCls.init('Test', 'Employee', 60000)
+
+    log.info(emp1.email)
+    log.info(emp1.fullname())
+
+    log.info(emp2.email)
+    log.info(emp2.fullname())
+
+    employeeCls.setRaiseAmt(1.05)
+    log.info("{0}", emp1.pay)
+    emp1.apply_raise()
+    log.info("{0}", emp1.pay)
+
+    log.info("{0}", employeeCls.raiseAmt)
+    // The _cls field is supposed to be private, but we are using it here
+    // to show that each raiseAmt field is derived from the *same* object.
+    log.info("{0}", emp1._cls.raiseAmt)
+    log.info("{0}", emp2._cls.raiseAmt)
+
+    empStr1 = "John-Doe-70000"
+    empStr2 = "Steve-Smith-30000"
+    empStr3 = "Jane-Doe-90000"
+
+    // Invoke the overloaded constructor
+    newEmp1 = employeeCls.init(empStr1)
+    log.info("{0}", newEmp1.email)
+    log.info("{0}", newEmp1.pay)
+
+    log.info("{0}", employeeCls.numOfEmps)
+
