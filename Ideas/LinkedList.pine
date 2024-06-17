@@ -1,0 +1,43 @@
+//@version=5
+indicator("LinkedList")
+
+//////////////////////////////////////////////////////////////////////////////
+// PURPOSE:
+// This program demonstrates that we can define a User Defined Type (UDT)
+// which references its own type. Hence, we can write a linked list.
+
+//////////////////////////////////////////////////////////////////////////////
+type LinkedListNode
+    int power2
+    LinkedListNode next     // Points to its own type!
+
+//////////////////////////////////////////////////////////////////////////////
+makeLinkedListPower2(int maxPower2) =>
+    if maxPower2 < 1
+        na
+
+    else
+        start = LinkedListNode.new(1)
+        prevNode = start
+        nextPower2 = prevNode.power2 + prevNode.power2
+        while nextPower2 <= maxPower2
+            node = LinkedListNode.new(nextPower2)
+            prevNode.next := node
+            prevNode := node
+            nextPower2 := prevNode.power2 + prevNode.power2
+        start
+
+//////////////////////////////////////////////////////////////////////////////
+showLinkedListPower2(start) =>
+    node = start
+    while not na(node)
+        log.info("{0}", node.power2)
+        node := node.next
+
+//////////////////////////////////////////////////////////////////////////////
+// Main
+//////////////////////////////////////////////////////////////////////////////
+if barstate.islast
+    startNode = makeLinkedListPower2(1024)
+    showLinkedListPower2(startNode)
+
