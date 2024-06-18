@@ -2,12 +2,20 @@
 // © 2024 grantj-re3
 
 //@version=5
-IND_TITLE = "MimicOOP1_Cls_Arr0"
+IND_TITLE = "MimicOOP1_Cls_Arr1"
 indicator(IND_TITLE)
 
 // PURPOSE
 // Attempt to write a Pine Script program to mimic OOP encapsulation.
 // 1/ Mimic an OOP class which has class level attributes/methods.
+// 2/ What if we want the constructor to append every object that it
+//    creates to an array within EmployeeCls (as we might in other
+//    OOP languages)? This is difficult with our existing arrangement.
+//    However, UDTs (User Defined Types) can reference their own
+//    type, so we can put the array within EmployeeInst instead.
+//    We keep a single copy of the array in the calling scope (main
+//    in this program) and pass a reference to it in the constructor
+//    argument list.
 //
 // Notes:
 // - In conventional OOP languages, a single class contains both class
@@ -41,6 +49,7 @@ type EmployeeInst
     string last
     string email
     float  pay
+    EmployeeInst[] emp_list // Self referencing type
 
 method fullname(EmployeeInst self) =>
     str.format("{0} {1}", self.first, self.last)    // Return the string
@@ -59,7 +68,7 @@ method repr(EmployeeInst self) =>      // Similar to python __repr__()
 // Employee instance constructor(s)
 //////////////////////////////////////////////////////////////////////////////
 // Constructor
-method init(EmployeeCls cls, string first, string last, float pay) =>
+method init(EmployeeCls cls, string first, string last, float pay, EmployeeInst[] emp_list=na) =>
     self = EmployeeInst.new()
     self._cls  := cls       // All EmployeeInst objects will point to the *one* instance of the class object.
     self.first := first
@@ -67,12 +76,15 @@ method init(EmployeeCls cls, string first, string last, float pay) =>
     self.pay   := pay
     self.set_email()
     self._cls.numOfEmps += 1
+    if not na(emp_list)
+        self.emp_list := emp_list
+        self.emp_list.push(self)
     self                    // Return the new object
 
 // Overloaded constructor. Called from_string() in Corey's tutorial.
-method init(EmployeeCls cls, string empStr) =>
+method init(EmployeeCls cls, string empStr, EmployeeInst[] emp_list=na) =>
     parts = str.split(empStr, '-')
-    cls.init(parts.get(0), parts.get(1), str.tonumber(parts.get(2)))    // Return the new object
+    cls.init(parts.get(0), parts.get(1), str.tonumber(parts.get(2)), emp_list)  // Return the new object
 
 //////////////////////////////////////////////////////////////////////////////
 // Employee class methods
@@ -88,11 +100,12 @@ method setRaiseAmt(EmployeeCls cls, float amount) =>
 //////////////////////////////////////////////////////////////////////////////
 if barstate.islast
     log.info("{0}\nAttempt to write a Pine Script program to mimic OOP encapsulation", IND_TITLE)
-    employeeCls = EmployeeCls.new()  // Make a *single* copy of class vars
+    employeeCls = EmployeeCls.new()         // Make a *single* copy of class vars
+    emp_list = array.new<EmployeeInst>(0)   // Make a *single* copy
 
     // Use the single class level object (employeeCls) to construct multiple instances
-    emp1 = employeeCls.init('Corey', 'Schafer', 50000)
-    emp2 = employeeCls.init('Test', 'Employee', 60000)
+    emp1 = employeeCls.init('Corey', 'Schafer', 50000, emp_list)
+    emp2 = employeeCls.init('Test', 'Employee', 60000, emp_list)
 
     log.info(emp1.email)
     log.info(emp1.fullname())
@@ -118,13 +131,12 @@ if barstate.islast
 
     // Use the single class level object (employeeCls) to construct multiple instances
     // Invoke the overloaded constructor
-    newEmp1 = employeeCls.init(empStr1)
-    newEmp2 = employeeCls.init(empStr2)
-    newEmp3 = employeeCls.init(empStr3)
+    newEmp1 = employeeCls.init(empStr1, emp_list)
+    newEmp2 = employeeCls.init(empStr2, emp_list)
+    newEmp3 = employeeCls.init(empStr3, emp_list)
 
     log.info("{0}", employeeCls.numOfEmps)  // Class level attribute
 
-    log.info("{0}", newEmp1.repr())
-    log.info("{0}", newEmp2.repr())
-    log.info("{0}", newEmp3.repr())
+    for emp in emp_list
+        log.info(emp.repr())
 
