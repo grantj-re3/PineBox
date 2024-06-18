@@ -2,25 +2,22 @@
 // © 2024 grantj-re3
 
 //@version=5
-IND_TITLE = "MimicOOP_Encap1"
+IND_TITLE = "MimicOOP1_Cls_Arr0"
 indicator(IND_TITLE)
 
 // PURPOSE
-// Attempt to make Pine Script mimic OOP for encapsulation.
+// Attempt to write a Pine Script program to mimic OOP encapsulation.
+// 1/ Mimic an OOP class which has class level attributes/methods.
 //
-// Differences compared to Corey Schafer's python tutorial (given below) are:
-// - To mimic class level attributes and methods, define a class level UDT
-//   (EmployeeCls) and make a single object (employeeCls) of this type.
-// - In the constructor init(), pass in the first argument which references
-//   the class level var employeeCls. This allows every object created to reference
-//   the class level attributes and methods via the instance level field, _cls.
-// - We have replaced the from_string() "constructor" with the new overloaded
-//   constructor init().
-// - The constructors look like class level methods because a class level var is
-//   the first arg (just like class level methods in python). We invoke the
-//   constructors with classvar.init().
-// - GOTCHA: Like class methods in python, the first arg is cls. However,
-//   unlike constructors in python, the first arg below is also cls (not self).
+// - In conventional OOP languages, a single class contains both class
+//   level attributes/methods *and* instance level attributes/methods.
+//   In this program, we implement these two levels separately.
+// - EmployeeCls = Employee class level attributes/methods. We make
+//   only one object of EmployeeCls in the whole program.
+// - EmployeeInst = Employee instance level attributes/methods. We make
+//   many objects of EmployeeInst in the whole program.
+// - We use init() to behave as a constructor (since new() is already
+//   used in pine script). We invoke constructors just like a class method.
 //
 // Try to implement the following Python tutorial:
 //   Corey Schafer: Python OOP Tutorials - Working with Classes
@@ -28,7 +25,7 @@ indicator(IND_TITLE)
 //   https://www.youtube.com/playlist?list=PL-osiE80TeTsqhIuOqKhwlXsIBIdSeYtc
 
 //////////////////////////////////////////////////////////////////////////////
-// Employee class vars. (Make a single object of this UDT.)
+// Employee class vars. (Make a single object of this type.)
 //////////////////////////////////////////////////////////////////////////////
 type EmployeeCls
     int numOfEmps = 0
@@ -38,7 +35,7 @@ type EmployeeCls
 // Employee instance vars & methods
 //////////////////////////////////////////////////////////////////////////////
 type EmployeeInst
-    EmployeeCls _cls        // A workaround to get access to class vars/methods from each instance/object
+    EmployeeCls _cls        // Allow access to class vars/methods from each instance/object
     string first
     string last
     string email
@@ -53,12 +50,13 @@ method apply_raise(EmployeeInst self) =>
 method set_email(EmployeeInst self) =>
     self.email := str.format("{0}.{1}@email.com", self.first, self.last)
 
+method repr(EmployeeInst self) =>
+    str.format("EmployeeInst: {0} | {1} | {2}  {3}", self.first, self.last, self.email, self.pay)
+
 //////////////////////////////////////////////////////////////////////////////
 // Employee instance constructor(s)
 //////////////////////////////////////////////////////////////////////////////
 // Constructor
-// - We will use init() (since new() is already used in pine script)
-// - We invoke these constructors just like a class method
 method init(EmployeeCls cls, string first, string last, float pay) =>
     self = EmployeeInst.new()
     self._cls  := cls       // All EmployeeInst objects will point to the *one* instance of the class object.
@@ -87,9 +85,10 @@ method setRaiseAmt(EmployeeCls cls, float amount) =>
 // Main
 //////////////////////////////////////////////////////////////////////////////
 if barstate.islast
-    log.info("{0}\nAttempt to make Pine Script mimic OOP for encapsulation", IND_TITLE)
-    employeeCls = EmployeeCls.new()  // Workaround: Make a *single* copy of class vars
+    log.info("{0}\nAttempt to write a Pine Script program to mimic OOP encapsulation", IND_TITLE)
+    employeeCls = EmployeeCls.new()  // Make a *single* copy of class vars
 
+    // Use the single class level object (employeeCls) to construct multiple instances
     emp1 = employeeCls.init('Corey', 'Schafer', 50000)
     emp2 = employeeCls.init('Test', 'Employee', 60000)
 
@@ -99,6 +98,7 @@ if barstate.islast
     log.info(emp2.email)
     log.info(emp2.fullname())
 
+    // Use the single class level object (employeeCls) to invoke class level methods
     employeeCls.setRaiseAmt(1.05)
     log.info("{0}", emp1.pay)
     emp1.apply_raise()
@@ -114,10 +114,15 @@ if barstate.islast
     empStr2 = "Steve-Smith-30000"
     empStr3 = "Jane-Doe-90000"
 
+    // Use the single class level object (employeeCls) to construct multiple instances
     // Invoke the overloaded constructor
     newEmp1 = employeeCls.init(empStr1)
-    log.info("{0}", newEmp1.email)
-    log.info("{0}", newEmp1.pay)
+    newEmp2 = employeeCls.init(empStr2)
+    newEmp3 = employeeCls.init(empStr3)
 
-    log.info("{0}", employeeCls.numOfEmps)
+    log.info("{0}", employeeCls.numOfEmps)  // Class level attribute
+
+    log.info("{0}", newEmp1.repr())
+    log.info("{0}", newEmp2.repr())
+    log.info("{0}", newEmp3.repr())
 
