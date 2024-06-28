@@ -1,0 +1,207 @@
+// License: https://opensource.org/license/bsd-3-clause
+// © 2024 grantj-re3
+
+//@version=5
+IND_TITLE = "MimicOOP_SimpleBank1b"
+indicator(IND_TITLE)
+
+// PURPOSE
+// Attempt to translate the following Python OOP program into Pine Script:
+//   Building a Simple Bank System in Python with OOP
+//   https://codebricks.co.nz/python-oop-example-01
+//
+// 1/ We have decided: (a) to only use class level UDTs when there are class
+//    level attributes or methods; (b) not to write constructors which
+//    contain the statement, MyUDT.new(). Instead, we will create an object
+//    with MyUDT.new() (with or without arguments) followed by an optional
+//    initialisation method call, init() or initMySubOrSuperClass(). E.g.
+//      v = MyUDT.new(1, "Foo")
+//      v.init(2, "Bar")
+//    If MyUDT has an associated class level variable, then we will
+//    pass it as an argument to new() or init().
+// 2/ The tricky part about translating the above python script into
+//    Pine Script is the code fragment in the User class below where
+//    2 different account classes (BankAccount & SavingsAccount) can
+//    be stored in the same array:
+//        def __init__(self, user_id, name):
+//            ...
+//            self.accounts = []
+//        def add_account(self, account):
+//            self.accounts.append(account)
+//    Pine Script allows only one type/UDT to be stored in an array. Hence
+//    we either need to merge the two types into one (as I have done below)
+//    or we need to have one array to store each account type.
+// 3/ Gotcha: The transfer() method in python does not use self, so is not
+//    behaving as an instance method. Pine Script generates a syntax error
+//    when the first argument of a method is not used. Rather than changing
+//    the behaviour, we have just performed a no-op action with self.
+
+//////////////////////////////////////////////////////////////////////////////
+const int TYPE_BANK_ACCOUNT     = 0
+const int TYPE_SAVINGS_ACCOUNT  = 1
+
+//////////////////////////////////////////////////////////////////////////////
+// BankAccount
+//////////////////////////////////////////////////////////////////////////////
+// Class level vars. (Make a single object of this type.)
+type BankAccountCls
+    int _accountNumberCounter = 1000
+
+//////////////////////////////////////////////////////////////////////////////
+// Instance level vars.
+type BankAccountInst
+    BankAccountCls _cls
+    int accountNumber
+    int _type
+    float balance
+    float interestRate
+
+//////////////////////////////////////////////////////////////////////////////
+// Instance initialiser:  Assumes MyUDT.new() has been run first.
+method initBankAccount(BankAccountInst self, BankAccountCls cls, float balance=0.0) =>
+    self._cls  := cls       // All objects will point to the *one* instance of the class level object.
+    self.accountNumber := self._cls._accountNumberCounter
+    self._cls._accountNumberCounter += 1
+    self.balance := balance
+    self._type := TYPE_BANK_ACCOUNT
+    self.interestRate := na
+    self
+
+// Instance initialiser:  Assumes MyUDT.new() has been run first.
+method initSavingsAccount(BankAccountInst self, BankAccountCls cls, float balance=0.0, interestRate=0.01) =>
+    self.initBankAccount(cls, balance)
+    self._type := TYPE_SAVINGS_ACCOUNT
+    self.interestRate := interestRate
+    self
+
+//////////////////////////////////////////////////////////////////////////////
+// Instance method(s)
+method deposit(BankAccountInst self, float amount) =>
+    if amount > 0
+        self.balance += amount
+        log.info("Deposited {0,number,#.##}. New balance: {1,number,#.##}", amount, self.balance)
+
+    else
+        log.info("Deposit amount must be positive")
+
+method withdraw(BankAccountInst self, float amount) =>
+    if amount > 0 and amount <= self.balance
+        self.balance -= amount
+        log.info("Withdrew {0,number,#.##}. New balance: {1,number,#.##}", amount, self.balance)
+
+    else
+        log.info("Insufficient funds or invalid amount")
+
+method checkBalance(BankAccountInst self) =>
+    self.balance
+
+// Only for TYPE_SAVINGS_ACCOUNT
+method applyInterest(BankAccountInst self) =>
+    if self._type == TYPE_SAVINGS_ACCOUNT
+        interest = self.balance * self.interestRate
+        self.balance += interest
+        log.info("Applied interest {0,number,#.##}. New balance: {1,number,#.##}",
+          interest, self.balance)
+    else
+        log.error("Account {0,number,#} does not support applyInterest!", self.accountNumber)
+
+//////////////////////////////////////////////////////////////////////////////
+// User: No class level UDT. No constructor (use the UDT's new() method).
+//////////////////////////////////////////////////////////////////////////////
+// Instance level vars.
+type UserInst
+    int userId
+    string name
+    BankAccountInst[] accounts
+
+//////////////////////////////////////////////////////////////////////////////
+// Instance method(s)
+method addAccount(UserInst self, BankAccountInst account) =>
+    self.accounts.push(account)
+    log.info("Account {0,number,#} added to user {1}", account.accountNumber, self.name)
+
+method removeAccount(UserInst self, int accountNumber) =>
+    for [i, acc] in self.accounts
+        if acc.accountNumber == accountNumber
+            self.accounts.remove(i)
+            break
+    log.info("Account {0,number,#} removed from user {1}", accountNumber, self.name)
+
+method getAccounts(UserInst self) =>
+    self.accounts
+
+//////////////////////////////////////////////////////////////////////////////
+// Bank: No class level UDT. No constructor (use the UDT's new() method).
+//////////////////////////////////////////////////////////////////////////////
+// Instance level vars.
+type BankInst
+    UserInst[] users
+
+//////////////////////////////////////////////////////////////////////////////
+// Instance method(s)
+method addUser(BankInst self, UserInst user) =>
+    self.users.push(user)
+    log.info("User {0} added", user.name)
+
+method findUser(BankInst self, int userId) =>
+    UserInst retUser = na
+    // Cannot use the variable 'user'. Doing so gives the error:
+    // - Invalid object name: user. Namespaces of built-ins cannot be used.
+    for u in self.users
+        if u.userId == userId
+            retUser := u
+            break
+    retUser
+
+method transfer(BankInst self, BankAccountInst fromAccount, BankAccountInst toAccount, float amount) =>
+    if self.users.size() > 0        // Workaround: We must use self
+        u = self.users.get(0)
+        u.userId += 0
+    if fromAccount.balance >= amount
+        fromAccount.withdraw(amount)
+        toAccount.deposit(amount)
+        log.info("Transferred {0,number,#.##} from account {1,number,#} to account {2,number,#}",
+          amount, fromAccount.accountNumber, toAccount.accountNumber)
+
+    else
+        log.info("Insufficient funds for transfer")
+
+//////////////////////////////////////////////////////////////////////////////
+// Main
+//////////////////////////////////////////////////////////////////////////////
+if barstate.islast
+    log.info("{0}\nAttempt to write a Pine Script version of a Simple Bank System", IND_TITLE)
+   
+    // Create class level vars
+    bankAccCls = BankAccountCls.new()
+
+    // Create bank instance
+    bank = BankInst.new(array.new<UserInst>(0))
+
+    // Create users
+    user1 = UserInst.new(1, "Alice", array.new<BankAccountInst>(0))
+    user2 = UserInst.new(2, "Bob",   array.new<BankAccountInst>(0))
+
+    // Add users to the bank
+    bank.addUser(user1)
+    bank.addUser(user2)
+
+    // Create accounts for users
+    account1 = BankAccountInst.new()
+    account1.initBankAccount(bankAccCls)
+    account2 = BankAccountInst.new()
+    account2.initSavingsAccount(bankAccCls, interestRate=0.05)
+
+    // Add accounts to users
+    user1.addAccount(account1)
+    user2.addAccount(account2)
+
+    // Perform transactions
+    account1.deposit(1000.00)
+    account1.withdraw(500)
+    account2.deposit(2000)
+    account2.applyInterest()
+
+    // Transfer money
+    bank.transfer(account1, account2, 200)
+

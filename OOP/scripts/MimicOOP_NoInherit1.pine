@@ -1,0 +1,107 @@
+// License: https://opensource.org/license/bsd-3-clause
+// © 2024 grantj-re3
+
+//@version=5
+IND_TITLE = "MimicOOP_NoInherit1"
+indicator(IND_TITLE)
+
+// PURPOSE
+// Attempt to translate the following Python OOP-inheritance program into Pine Script:
+//   Program ABOO1_6.py from
+//   Object-oriented Programming in Python — Lesson 1. Substitutability and Inheritance by Avner Ben
+//   https://medium.com/codex/object-oriented-programming-in-python-lesson-1-substitutability-and-inheritance-e5c6661dfca5
+//
+// Pine Script does not support inheritance, hence either:
+// 1/ we need to merge the three types into one (as I have done below), or
+// 2/ we need to have one User Defined Type (UDT) to store each shape-type.
+// Option 2 may appear initially attractive, however it can become a problem
+// if you need to store the shapes within an array, map, etc. as Pine Script
+// arrays, maps, etc. are only able to store values of a *single* type.
+//////////////////////////////////////////////////////////////////////////////
+const int TYPE_CIRCLE     = 0
+const int TYPE_RECTANGLE  = 1
+const int TYPE_TRIANGLE   = 2
+
+const float PI = 3.14159265
+
+//////////////////////////////////////////////////////////////////////////////
+// Shape
+//////////////////////////////////////////////////////////////////////////////
+// Dummy class level vars. (Make a single object of this type.)
+type NilShapeCls
+    int _k = 0
+
+// Instance level vars.
+type ShapeInst
+    NilShapeCls _cls
+    int   _type
+    float _x
+    float _y
+
+    float _radius       // For circle: radius
+    float _w            // For rectangle: w, h
+    float _h
+
+    float _s1           // For triangle: s1, s2, s3
+    float _s2
+    float _s3
+
+//////////////////////////////////////////////////////////////////////////////
+// Similar to a __super__() method for ShapeInst constructor
+method _superShapeInst(NilShapeCls cls, int type, float x, float y) =>
+    self = ShapeInst.new()
+    self._cls  := cls
+    self._type := type
+    self._x := x
+    self._y := y
+    self
+
+method getPosition(ShapeInst self) => 
+    [self._x, self._y]
+
+method calcArea(ShapeInst self) =>
+    switch self._type
+        TYPE_CIRCLE     => PI * self._radius * self._radius
+        TYPE_RECTANGLE  => self._w * self._h
+        =>
+            log.error("Method \"calcArea\" not implemented (for shape-type {0,number,#})", self._type)
+            -1.0
+
+//////////////////////////////////////////////////////////////////////////////
+// Similar to the Circle constructor
+method initCircle(NilShapeCls cls, float x, float y, float radius) =>
+    self = cls._superShapeInst(TYPE_CIRCLE, x, y)
+    self._radius := radius
+    self
+
+// Similar to the Rectangle constructor
+method initRectangle(NilShapeCls cls, float x, float y, float w, float h) =>
+    self = cls._superShapeInst(TYPE_RECTANGLE, x, y)
+    self._w := w
+    self._h := h
+    self
+
+// Similar to the Triangle constructor
+method initTriangle(NilShapeCls cls, float x, float y, float s1, float s2, float s3) =>
+    self = cls._superShapeInst(TYPE_TRIANGLE, x, y)
+    self._s1 := s1
+    self._s2 := s2
+    self._s3 := s3
+    self
+
+//////////////////////////////////////////////////////////////////////////////
+// Main
+//////////////////////////////////////////////////////////////////////////////
+if barstate.islast
+    log.info("{0}\nAttempt to write a Pine Script version of OOP-inheritance", IND_TITLE)
+    shapeCls = NilShapeCls.new()    // Make a single copy of this class level var
+   
+    aCircle = shapeCls.initCircle(55, 212, 50)
+    log.info("{0,number,#.##}", aCircle.calcArea())
+
+    aRectangle = shapeCls.initRectangle(22, 33, 10, 11)
+    log.info("{0,number,#.##}", aRectangle.calcArea())
+
+    aTriangle = shapeCls.initTriangle(100, 213, 10, 10, 10)
+    log.info("{0,number,#.##}", aTriangle.calcArea())
+
