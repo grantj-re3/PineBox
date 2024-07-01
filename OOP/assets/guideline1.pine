@@ -1,0 +1,36 @@
+//@version=5
+indicator(...)
+
+type FooCls                 // Class level UDT: Create only *one* of these objects
+    ...
+
+type FooInst                // Instance level UDT
+    FooCls _cls             // Allow access to class attributes/methods from each instance/object
+    ...
+    FooInst[] fooList       // Optional: E.g. consider this if you want an array of all objects
+
+// Define class level methods and instance level methods/constructors in whatever order is
+// needed so that forward references are not needed (because Pine Script does not support them).
+
+method myClsMethod(FooCls cls, ...) =>
+    ...
+
+// Constructor
+method init(FooCls cls, ..., FooInst[] fooList) =>
+    self = FooInst.new()
+    self._cls := cls        // All FooInst objects will point to the *one* instance of the class object.
+    ...
+    self.fooList := fooList // Optional: E.g. consider this if you want an array of all objects
+    self.fooList.push(self) // Optional: E.g. consider this if you want an array of all objects
+    self                    // Return the new object
+
+method myInstMethod(FooInst self, ...) =>
+    ...
+
+// Main
+fooCls = FooCls.new()                   // Make a *single* copy of class attributes
+fooList = array.new<FooInst>(0)         // Optional: Make a *single* copy
+
+// Use the single class level object (fooCls) to construct multiple instances
+foo1 = fooCls.init(..., fooList)
+
